@@ -51,6 +51,10 @@ encontrar_15(Mano, Mesa, CartaMano, ElegidasMesa, RestoMano, RestoMesa) :-
 %Muestra al usuario las opciones en cada turno
 ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Mano, NuevasGan, Pts, N_Esc), Mesa, R_Mesa) :-
     format('~nTurno de: ~a~n', [Nom]),
+    format('~n=================', []),
+    format('~nTus cartas: ',[]),
+    imprimir_mano(Mano,1),
+    format('~n=================~n', []),
     findall(opt(CM, EM, RMes, RMan), encontrar_15(Mano, Mesa, CM, EM, RMan, RMes), Opciones),
     (Opciones \= [] ->
         %si hay opciones para levantar
@@ -145,6 +149,9 @@ rotar_turno_jugador -->
     {
         select(jugadores([P|Ps]), S0, S1),
         select(mesa(Mesa0), S1, S2),
+        format('~n=================', []),
+        format('~nCartas en mesa: ~w', [Mesa0]),
+        format('~n=================', []),
         ejecutar_jugada_interactiva(P, P_Act, Mesa0, Mesa1),
         append(Ps, [P_Act], JugadoresRotados),
         S = [jugadores(JugadoresRotados), mesa(Mesa1)|S2]
