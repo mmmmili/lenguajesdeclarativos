@@ -88,32 +88,16 @@ imprimir_mano([C|Resto], N):-
 
 %predicado principal
 escoba :- 
-    % El jugador se inicializa con: Nombre, Mano, Ganadas, PuntosAcum, Escobas
-    Jugadores = [
-                jugador('Ignacio', [], [], 0, 0), 
-                jugador('Mili', [], [], 0, 0)
-                ],
-    partida_recursiva(Jugadores).
+    % Inicializamos jugadores
+    Jugadores = [jugador('Ignacio', [], [], 0, 0), jugador('Mili', [], [], 0, 0)],
+    % Ejecutamos el mazo completo
+    phrase(escoba_loop(Jugadores, JugadoresFinales), [[mazo([]), mesa([]), jugadores([])]], [_]),
+    % Calculamos quién ganó esa única mano
+    determinar_ganador_final(JugadoresFinales).
 
-%verifica si alguien llegó al limite de puntos
-alguien_gano(ListaJugadores, Nombre) :-
-    obtener_puntajes(ListaJugadores, Puntajes),
-    max_list(Puntajes, Max),
-    Max >= 15,  %limite de puntos
-    member(jugador(Nombre, _, _, Max, _), ListaJugadores).
 obtener_puntajes([], []).
 obtener_puntajes([jugador(_, _, _, P, _)|Ps], [P|Resto]) :-
     obtener_puntajes(Ps, Resto).
-
-%mientras nadie gane el juego sigue
-partida_recursiva(Jugadores) :-
-    (alguien_gano(Jugadores, Ganador) ->
-        mostrar_tabla_final(Jugadores, Ganador)
-    ;
-        phrase(escoba_loop(Jugadores, JugadoresAlFinalMano), [[mazo([]), mesa([]), jugadores([])]], [_]),
-        preparar_nueva_mano(JugadoresAlFinalMano, JugadoresSiguienteRonda),
-        partida_recursiva(JugadoresSiguienteRonda)
-    ).
 
 %Prepara el juego, lanza la ronda, y al final calcula los puntos
 escoba_loop(PsIn, PsOut) -->
@@ -131,10 +115,6 @@ preparar_juego(PsIn) -->
     % Solo mazo y jugadores; la mesa la crea repartir_mesa_inicial
     state(_, [mazo(Mazo), jugadores(PsIn)]),
     repartir_mesa_inicial.
-
-preparar_nueva_mano([], []).
-preparar_nueva_mano([jugador(Nom, _, _, Pts, _)|Ps], [jugador(Nom, [], [], Pts, 0)|Ps2]) :-
-    preparar_nueva_mano(Ps, Ps2).
 
 % --- LÓGICA DE RONDAS Y REPARTO (DCG) ---
 
@@ -233,6 +213,12 @@ sumar_si_es_maximo(Criterio, Max, J_In, J_Out) :-
     (Cant == Max -> P1 is P + 1 ; P1 = P),
     J_Out = jugador(N, M, G, P1, E).
 
+determinar_ganador_final(Jugadores) :-
+    obtener_puntajes(Jugadores, Puntajes),
+    max_list(Puntajes, Max),
+    member(jugador(Nombre, _, _, Max, _), Jugadores),
+    mostrar_tabla_final(Jugadores, Nombre).
+
 %Se muestra la tabla de puntajes al final
 mostrar_tabla_final(Jugadores, Ganador) :-
     format('~n====================================~n', []),
@@ -245,7 +231,7 @@ mostrar_tabla_final(Jugadores, Ganador) :-
     format('  EL GANADOR FINAL ES: ~a~n', [Ganador]),
     format('====================================~n', []).
 
-% --- 7. AUXILIARES ---
+% ---AUXILIARES ---
 
 %Estado actual y cambios de estado
 state(S), [S] --> [S].
