@@ -91,7 +91,7 @@ imprimir_mano([C|Resto], N):-
 
 %Predicado principal
 escoba :- 
-% Inicializamos jugadores, cada uno tiene (nombre, cartas, mesa, puntaje acumulado, escobas)
+% Inicializamos jugadores, cada uno tiene (nombre, Mano, cartas ganadas, puntaje acumulado, cantidad de escobas)
     Jugadores = [jugador('Ignacio', [], [], 0, 0), 
                 jugador('Mili', [], [], 0, 0)
                 ],
@@ -228,17 +228,48 @@ determinar_ganador_final(Jugadores) :-
     member(jugador(Nombre, _, _, Max, _), Jugadores),
     mostrar_tabla_final(Jugadores, Nombre).
 
+% Busca quién tiene el 7 de oro
+quien_tiene_el_7(Jugadores, Nombre) :-
+    member(jugador(Nombre, _, Ganadas, _, _), Jugadores),
+    member(7-oro, Ganadas), !.
+quien_tiene_el_7(_, 'Nadie').
+
+% Busca quién ganó la mayoría de una categoría
+quien_gano_mayoria(Jugadores, Criterio, Nombre) :-
+    maplist(obtener_cantidad(Criterio), Jugadores, Cantidades),
+    max_list(Cantidades, Max),
+    % Filtramos quiénes llegaron al máximo
+    include(==(Max), Cantidades, Ganadores),
+    (length(Ganadores, 1) -> 
+        % Si hay uno solo, buscamos su nombre
+        member(jugador(Nombre, _, G, _, _), Jugadores),
+        obtener_cantidad(Criterio, jugador(Nombre, _, G, _, _), Max)
+    ; 
+        % Si hay empate o nadie sumó, devolvemos 'Empate'
+        Nombre = 'Empate'
+    ).
+
 %Se muestra la tabla de puntajes al final
 mostrar_tabla_final(Jugadores, Ganador) :-
-    format('~n====================================~n', []),
-    format('       ¡PARTIDA TERMINADA!          ~n', []),
-    format('====================================~n', []),
-    % Recorremos la lista para mostrar cada puntaje
-    forall(member(jugador(Nom, _, _, Pts, _), Jugadores),
-           format('Jugador: ~w  |  Puntos Totales: ~d~n', [Nom, Pts])),
-    format('------------------------------------~n', []),
-    format('  EL GANADOR FINAL ES: ~a~n', [Ganador]),
-    format('====================================~n', []).
+    % Calculamos los hitos para mostrar
+    quien_tiene_el_7(Jugadores, SieteOro),
+    quien_gano_mayoria(Jugadores, total, MasCartas),
+    quien_gano_mayoria(Jugadores, oros, MasOros),
+
+    format('~n====================================', []),
+    format('~n       ¡PARTIDA TERMINADA!          ', []),
+    format('~n====================================', []),
+    forall(member(jugador(Nom, _, _, Pts,_), Jugadores),
+           format('~nJugador: ~w  |  Puntos Totales: ~d', [Nom, Pts])),
+    
+    format('~n------------------------------------', []),
+    format('~nRESUMEN DE ESTA MANO:', []),
+    format('~n- 7 de Oro: ~w', [SieteOro]),
+    format('~n- Más Cartas: ~w', [MasCartas]),
+    format('~n- Más Oros: ~w', [MasOros]),
+    format('~n------------------------------------', []),
+    format('~n  EL GANADOR FINAL ES: ~a', [Ganador]),
+    format('~n====================================~n', []).
 
 % ---AUXILIARES ---
 
