@@ -1,5 +1,5 @@
 % ---DEFINICIONES DE BASE Y MAZO ---
-
+%Determina si cumple con el formato de carta
 es_carta(Numero-Palo) :- 
     member(Palo, [oro, espada, basto, copa]),
     member(Numero, [rey, caballo, sota, 7, 6, 5, 4, 3, 2, ancho]).
@@ -8,7 +8,6 @@ es_carta(Numero-Palo) :-
 valor_carta(Numero-Palo, N) :-
     es_carta(Numero-Palo),
     valor_aux(Numero, N).
-
 valor_aux(rey, 10).
 valor_aux(caballo, 9).
 valor_aux(sota, 8).
@@ -75,13 +74,13 @@ ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Ma
         N_Esc = Esc
     ).
 
-
+%Muestra las opciones que tiene para levantar de la mesa
 imprimir_opciones([], _).
 imprimir_opciones([opt(CM, EM, _,_)|Resto], N):-
     format('~w: Levantar ~w usando ~w de la mesa~n', [N, CM, EM]),
     N1 is N+1,
     imprimir_opciones(Resto, N1).
-
+%Muestra las cartas que tiene el jugador en la mano
 imprimir_mano([], _).
 imprimir_mano([C|Resto], N):-
     format('~w: ~w~n', [N,C]),
@@ -90,11 +89,13 @@ imprimir_mano([C|Resto], N):-
 
 % ---FLUJO PRINCIPAL Y RECURSIÓN DE PUNTOS ---
 
-%predicado principal
+%Predicado principal
 escoba :- 
-    % Inicializamos jugadores
-    Jugadores = [jugador('Ignacio', [], [], 0, 0), jugador('Mili', [], [], 0, 0)],
-    % Ejecutamos el mazo completo
+% Inicializamos jugadores, cada uno tiene (nombre, cartas, mesa, puntaje acumulado, escobas)
+    Jugadores = [jugador('Ignacio', [], [], 0, 0), 
+                jugador('Mili', [], [], 0, 0)
+                ],
+    % Iniciamos el juego
     phrase(escoba_loop(Jugadores, JugadoresFinales), [[mazo([]), mesa([]), jugadores([])]], [_]),
     % Calculamos quién ganó esa única mano
     determinar_ganador_final(JugadoresFinales).
@@ -104,20 +105,20 @@ obtener_puntajes([jugador(_, _, _, P, _)|Ps], [P|Resto]) :-
     obtener_puntajes(Ps, Resto).
 
 %Prepara el juego, lanza la ronda, y al final calcula los puntos
-escoba_loop(PsIn, PsOut) -->
-    preparar_juego(PsIn),
+escoba_loop(PtsFijos, PtsTotales) -->
+    preparar_juego(PtsFijos),
     jugar_partida,
     state(S),
     { 
         member(jugadores(PsFinalMano), S),
-        calcular_puntajes_finales(PsFinalMano, PsOut) 
+        calcular_puntajes_finales(PsFinalMano, PtsTotales) 
     }.
 
 %Genera el mazo y coloca los jugadores en el estado inicial
-preparar_juego(PsIn) -->
+preparar_juego(PtsFijos) -->
     { generar_mazo(Mazo) },
     % Solo mazo y jugadores; la mesa la crea repartir_mesa_inicial
-    state(_, [mazo(Mazo), jugadores(PsIn)]),
+    state(_, [mazo(Mazo), jugadores(PtsFijos)]),
     repartir_mesa_inicial.
 
 % --- LÓGICA DE RONDAS Y REPARTO (DCG) ---
@@ -186,11 +187,11 @@ repartir_mesa_inicial -->
 % ---CÁLCULO DE PUNTAJES (REGLAS REALES) ---
 
 %calcula los puntajes finales
-calcular_puntajes_finales(PsIn, PsOut) :-
-    maplist(sumar_puntos_fijos, PsIn, PsTemp),
-    otorgar_punto_mayoria(PsTemp, PsTemp2, total),
-    otorgar_punto_mayoria(PsTemp2, PsTemp3, oros),
-    otorgar_punto_mayoria(PsTemp3, PsOut, sietes).
+calcular_puntajes_finales(PtsFijos, PtsTotales) :-
+    maplist(sumar_puntos_fijos, PtsFijos, PtsTemp),
+    otorgar_punto_mayoria(PtsTemp, PtsTemp2, total),
+    otorgar_punto_mayoria(PtsTemp2, PtsTemp3, oros),
+    otorgar_punto_mayoria(PtsTemp3, PtsTotales, sietes).
 
 %suma de puntos que no dependen del rival, 2 por cantidad de escobas y 1 punto por tener el 7 de oro
 sumar_puntos_fijos(jugador(N, _, G, P, E), jugador(N, [], [], P_Act, 0)) :-
@@ -199,14 +200,14 @@ sumar_puntos_fijos(jugador(N, _, G, P, E), jugador(N, [], [], P_Act, 0)) :-
     P_Act is P + P_Escobas + P_Siete.
 
 %otorga los puntos solo al jugador que cumpla con las condiciones
-otorgar_punto_mayoria(PsIn, PsOut, Criterio) :-
-    maplist(obtener_cantidad(Criterio), PsIn, Cantidades),
+otorgar_punto_mayoria(PtsFijos, PtsTotales, Criterio) :-
+    maplist(obtener_cantidad(Criterio), PtsFijos, Cantidades),
     max_list(Cantidades, Max),
     include(==(Max), Cantidades, Ganadores),
     (length(Ganadores, 1) ->
-        maplist(sumar_si_es_maximo(Criterio, Max), PsIn, PsOut)
+        maplist(sumar_si_es_maximo(Criterio, Max), PtsFijos, PtsTotales)
     ;
-        PsOut = PsIn
+        PtsTotales = PtsFijos
     ).
 %Auxiliares para calcular las cantidades
 obtener_cantidad(total, jugador(_, _, G, _, _), Cant) :- length(G, Cant).   %1 punto por mayoria de cartas
@@ -220,6 +221,7 @@ sumar_si_es_maximo(Criterio, Max, J_In, J_Out) :-
     (Cant == Max -> P1 is P + 1 ; P1 = P),
     J_Out = jugador(N, M, G, P1, E).
 
+%Obtiene los puntajes y determina al ganador del juego
 determinar_ganador_final(Jugadores) :-
     obtener_puntajes(Jugadores, Puntajes),
     max_list(Puntajes, Max),
