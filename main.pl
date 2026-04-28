@@ -1,4 +1,4 @@
-% ---DEFINICIONES DE BASE Y MAZO ---
+% definiciones de base y mazo
 %Determina si cumple con el formato de carta
 es_carta(Numero-Palo) :- 
     member(Palo, [oro, espada, basto, copa]),
@@ -22,7 +22,7 @@ generar_mazo(MazoMezclado) :-
     ), MazoOrdenado),
     random_permutation(MazoOrdenado, MazoMezclado).
 
-% ---LÓGICA MATEMÁTICA Y BÚSQUEDA (MOTOR) ---
+% lógica matematica y busqueda
 
 %Suma los valores de un conjunto de cartas
 suma_cartas(Cartas, S) :-
@@ -45,7 +45,7 @@ encontrar_15(Mano, Mesa, CartaMano, ElegidasMesa, RestoMano, RestoMesa) :-
     subconjunto(Mesa, ElegidasMesa, RestoMesa),
     suma_15([CartaMano|ElegidasMesa]).
 
-% ---INTERFAZ DE USUARIO (IMPRESIÓN Y LECTURA) ---
+% impresión y lectura
 
 %Muestra al usuario las opciones en cada turno
 ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Mano, NuevasGan, Pts, N_Esc), Mesa, R_Mesa) :-
@@ -87,7 +87,7 @@ imprimir_mano([C|Resto], N):-
     N1 is N+1,
     imprimir_mano(Resto, N1).
 
-% ---FLUJO PRINCIPAL Y RECURSIÓN DE PUNTOS ---
+% flujo principal y recursión de puntos
 
 %Predicado principal
 escoba :- 
@@ -122,7 +122,7 @@ preparar_juego(PtsFijos) -->
     state(_, [mazo(Mazo), jugadores(PtsFijos)]),
     repartir_mesa_inicial.
 
-% --- LÓGICA DE RONDAS Y REPARTO (DCG) ---
+% lógica de rondas y reparto (DCG)
 
 %Mientras haya cartas se sigue jugando
 jugar_partida -->
@@ -185,7 +185,7 @@ repartir_mesa_inicial -->
         S = [mesa(Cuatro), mazo(RestoMazo)|S1]
     }.
 
-% ---CÁLCULO DE PUNTAJES (REGLAS REALES) ---
+% cálculo de puntajes
 
 %calcula los puntajes finales
 calcular_puntajes_finales(PtsFijos, PtsTotales) :-
@@ -241,7 +241,7 @@ mostrar_tabla_final(Jugadores, Ganador) :-
     format('  EL GANADOR FINAL ES: ~a~n', [Ganador]),
     format('====================================~n', []).
 
-% ---AUXILIARES ---
+% auxiliares
 
 %Estado actual y cambios de estado
 state(S), [S] --> [S].
