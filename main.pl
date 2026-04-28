@@ -45,13 +45,13 @@ encontrar_15(Mano, Mesa, CartaMano, ElegidasMesa, RestoMano, RestoMesa) :-
     subconjunto(Mesa, ElegidasMesa, RestoMesa),
     suma_15([CartaMano|ElegidasMesa]).
 
-% ---INTERFAZ DE USUARIO (IMPRESIÓN Y LECTURA) ---
+% interfaz de usuario --------------
 
-%Muestra al usuario las opciones en cada turno
+% Muestra al usuario las opciones en cada turno
 ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Mano, NuevasGan, Pts, N_Esc), Mesa, R_Mesa) :-
     format('~nTurno de: ~a~n', [Nom]),
     format('~n=================', []),
-    format('~nTus cartas: ',[]),
+    format('~nTus cartas: ~n',[]),
     imprimir_mano(Mano,1),
     format('~n=================~n', []),
     findall(opt(CM, EM, RMes, RMan), encontrar_15(Mano, Mesa, CM, EM, RMan, RMes), Opciones),
@@ -74,7 +74,7 @@ ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Ma
         N_Esc = Esc
     ).
 
-%Muestra las opciones que tiene para levantar de la mesa
+% Muestra las opciones que tiene para levantar de la mesa
 imprimir_opciones([], _).
 imprimir_opciones([opt(CM, EM, _,_)|Resto], N):-
     format('~w: Levantar ~w usando ~w de la mesa~n', [N, CM, EM]),
@@ -121,7 +121,7 @@ preparar_juego(PtsFijos) -->
     state(_, [mazo(Mazo), jugadores(PtsFijos)]),
     repartir_mesa_inicial.
 
-% --- LÓGICA DE RONDAS Y REPARTO (DCG) ---
+% logica de rondas 
 
 %Mientras haya cartas se sigue jugando
 jugar_partida -->
