@@ -91,7 +91,7 @@ imprimir_mano([C|Resto], N):-
 
 %Predicado principal
 escoba :- 
-% Inicializamos jugadores, cada uno tiene (nombre, Mano, cartas ganadas, puntaje acumulado, cantidad de escobas)
+% Inicializamos jugadores, cada uno tiene (nombre, cartas, mesa, puntaje acumulado, escobas)
     Jugadores = [jugador('Ignacio', [], [], 0, 0), 
                 jugador('Mili', [], [], 0, 0)
                 ],
