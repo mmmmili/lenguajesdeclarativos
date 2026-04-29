@@ -105,13 +105,13 @@ obtener_puntajes([jugador(_, _, _, P, _)|Ps], [P|Resto]) :-
     obtener_puntajes(Ps, Resto).
 
 %Prepara el juego, lanza la ronda, y al final calcula los puntos
-escoba_loop(PtsFijos, PtsTotales) -->
-    preparar_juego(PtsFijos),
+escoba_loop(Jugadores, JugadoresFinales) -->
+    preparar_juego(Jugadores),
     jugar_partida,
     state(S),
     { 
         member(jugadores(PsFinalMano), S),
-        calcular_puntajes_finales(PsFinalMano, PtsTotales) 
+        calcular_puntajes_finales(PsFinalMano, JugadoresFinales) 
     }.
 
 %Genera el mazo y coloca los jugadores en el estado inicial
