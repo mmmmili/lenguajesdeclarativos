@@ -148,13 +148,13 @@ jugar_ronda_de_3 -->
 rotar_turno_jugador -->
     state(S0, S),
     {
-        select(jugadores([J|Jugadores]), S0, S1),
+        select(jugadores([J|JugadoresRestantes]), S0, S1),
         select(mesa(Mesa0), S1, S2),
         format('~n=================', []),
         format('~nCartas en mesa: ~w', [Mesa0]),
         format('~n=================', []),
         ejecutar_jugada_interactiva(J, J_Act, Mesa0, Mesa1),
-        append(Jugadores, [J_Act], JugadoresRotados),
+        append(JugadoresRestantes, [J_Act], JugadoresRotados),
         S = [jugadores(JugadoresRotados), mesa(Mesa1)|S2]
     }.
 
