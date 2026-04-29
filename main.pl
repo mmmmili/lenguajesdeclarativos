@@ -97,7 +97,7 @@ escoba :-
                 ],
     % Iniciamos el juego
     phrase(escoba_loop(Jugadores, JugadoresFinales), [[mazo([]), mesa([]), jugadores([])]], [_]),
-    % Calculamos quién ganó esa única mano
+    % Calculamos quién ganó
     determinar_ganador_final(JugadoresFinales).
 
 obtener_puntajes([], []).
@@ -105,20 +105,20 @@ obtener_puntajes([jugador(_, _, _, P, _)|Ps], [P|Resto]) :-
     obtener_puntajes(Ps, Resto).
 
 %Prepara el juego, lanza la ronda, y al final calcula los puntos
-escoba_loop(Jugadores, JugadoresFinales) -->
-    preparar_juego(Jugadores),
+escoba_loop(JugadoresIniciales, JugadoresConPuntajeFinal) -->
+    preparar_juego(JugadoresIniciales),
     jugar_partida,
     state(S),
     { 
         member(jugadores(PsFinalMano), S),
-        calcular_puntajes_finales(PsFinalMano, JugadoresFinales) 
+        calcular_puntajes_finales(PsFinalMano, JugadoresConPuntajeFinal) 
     }.
 
 %Genera el mazo y coloca los jugadores en el estado inicial
-preparar_juego(PtsFijos) -->
+preparar_juego(Jugadores) -->
     { generar_mazo(Mazo) },
     % Solo mazo y jugadores; la mesa la crea repartir_mesa_inicial
-    state(_, [mazo(Mazo), jugadores(PtsFijos)]),
+    state(_, [mazo(Mazo), jugadores(Jugadores)]),
     repartir_mesa_inicial.
 
 % lógica de rondas y reparto (DCG)
@@ -148,13 +148,13 @@ jugar_ronda_de_3 -->
 rotar_turno_jugador -->
     state(S0, S),
     {
-        select(jugadores([P|Ps]), S0, S1),
+        select(jugadores([J|Jugadores]), S0, S1),
         select(mesa(Mesa0), S1, S2),
         format('~n=================', []),
         format('~nCartas en mesa: ~w', [Mesa0]),
         format('~n=================', []),
-        ejecutar_jugada_interactiva(P, P_Act, Mesa0, Mesa1),
-        append(Ps, [P_Act], JugadoresRotados),
+        ejecutar_jugada_interactiva(J, J_Act, Mesa0, Mesa1),
+        append(Jugadores, [J_Act], JugadoresRotados),
         S = [jugadores(JugadoresRotados), mesa(Mesa1)|S2]
     }.
 
@@ -242,7 +242,7 @@ mostrar_tabla_final(Jugadores, Ganador) :-
 
 % auxiliares
 
-%Estado actual y cambios de estado
+%Obtener estado actual y cambios de estado
 state(S), [S] --> [S].
 state(S0, S), [S] --> [S0].
 
