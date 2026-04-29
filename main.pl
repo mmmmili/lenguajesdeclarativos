@@ -249,3 +249,4 @@ state(S0, S), [S] --> [S0].
 %Genera todas las combinaciones de una lista
 subconjunto([], [], []).
 subconjunto([X|Resto], [X|Sub], Otros) :- subconjunto(Resto, Sub, Otros).
+subconjunto([X|Resto], Sub, [X|Otros]) :- subconjunto(Resto, Sub, Otros).
