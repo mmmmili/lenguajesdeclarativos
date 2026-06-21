@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Escoba de 15 - Online (WASM)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>ESCOBA DE 15</h1>
+
+    <!-- conexion -->
+    <div id="inicio">
+        <input type="text" id="input-servidor" placeholder="ws://localhost:8881" value="ws://localhost:8881">
+        <input type="text" id="input-nombre" placeholder="Tu nombre" maxlength="20">
+        <button class="btn-principal" id="btn-conectar" onclick="conectar()" disabled>CARGANDO PROLOG...</button>
+        <p id="estado-conexion"></p>
+    </div>
+
+    <!-- juego -->
+    <div id="juego">
+        <div class="turno-header" id="turno"></div>
+
+        <div class="seccion">
+            <p class="seccion-titulo">MESA</p>
+            <div class="cartas-fila" id="mesa-cartas"></div>
+        </div>
+
+        <div class="seccion">
+            <p class="seccion-titulo" id="mano-titulo">TU MANO</p>
+            <div class="cartas-fila" id="mano-cartas"></div>
+        </div>
+
+        <div class="seccion">
+            <p class="seccion-titulo" id="opciones-titulo">JUGADAS DISPONIBLES</p>
+            <div class="opciones-lista" id="opciones-lista"></div>
+        </div>
+
+        <div class="seccion">
+            <p class="seccion-titulo">PUNTAJE PARCIAL</p>
+            <div id="puntaje"></div>
+        </div>
+
+        <div id="mensaje"></div>
+
+        <div class="seccion">
+            <p class="seccion-titulo">REGISTRO</p>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script src="node_modules/swipl-wasm/dist/swipl/swipl-web.js"></script>
+    <script src="game.js"></script>
+
+</body>
+</html>

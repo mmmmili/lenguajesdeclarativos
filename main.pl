@@ -1,252 +1,183 @@
-% definiciones de base y mazo
-%Determina si cumple con el formato de carta
-es_carta(Numero-Palo) :- 
-    member(Palo, [oro, espada, basto, copa]),
-    member(Numero, [rey, caballo, sota, 7, 6, 5, 4, 3, 2, ancho]).
 
-%indica el valor de una carta
-valor_carta(Numero-Palo, N) :-
-    es_carta(Numero-Palo),
-    valor_aux(Numero, N).
-valor_aux(rey, 10).
-valor_aux(caballo, 9).
-valor_aux(sota, 8).
-valor_aux(ancho, 1).
-valor_aux(N, N) :- member(N, [2, 3, 4, 5, 6, 7]).
 
-%Generación del mazo de manera random
-generar_mazo(MazoMezclado) :-
-    findall(N-P, (
-        member(P, [oro, espada, basto, copa]), 
-        member(N, [rey, caballo, sota, 7, 6, 5, 4, 3, 2, ancho])
-    ), MazoOrdenado),
-    random_permutation(MazoOrdenado, MazoMezclado).
+:- dynamic mi_nombre/1.
+:- dynamic mi_mano/1.
+:- dynamic mesa_actual/1.
+:- dynamic opciones_actuales/1.   
+:- dynamic modo_actual/1.        
+:- dynamic contexto_lectura/1.    
+:- dynamic ultimo_mensaje/1.
 
-% lógica matematica y busqueda
 
-%Suma los valores de un conjunto de cartas
-suma_cartas(Cartas, S) :-
-    suma_cartas_(Cartas, 0, S).
+iniciar_cliente(Nombre) :-
+    retractall(mi_nombre(_)),
+    retractall(mi_mano(_)),
+    retractall(mesa_actual(_)),
+    retractall(opciones_actuales(_)),
+    retractall(modo_actual(_)),
+    retractall(contexto_lectura(_)),
+    retractall(ultimo_mensaje(_)),
+    assert(mi_nombre(Nombre)),
+    assert(mi_mano([])),
+    assert(mesa_actual([])),
+    assert(opciones_actuales([])),
+    assert(modo_actual(esperando)),
+    assert(contexto_lectura(ninguno)),
+    assert(ultimo_mensaje('')).
 
-%auxiliar tail recursivo
-suma_cartas_([], S, S).
-suma_cartas_([Carta|Resto], Cont, Suma) :-
-    valor_carta(Carta, Valor),
-    Cont1 is Cont + Valor,
-    suma_cartas_(Resto, Cont1, Suma).
 
-%indica si la suma de los valores da 15
-suma_15(Cartas) :-
-    suma_cartas(Cartas, 15).
 
-%encuentra la combinacion de cartas que sume 15
-encontrar_15(Mano, Mesa, CartaMano, ElegidasMesa, RestoMano, RestoMesa) :-
-    select(CartaMano, Mano, RestoMano),
-    subconjunto(Mesa, ElegidasMesa, RestoMesa),
-    suma_15([CartaMano|ElegidasMesa]).
+recibir_linea(Texto, Accion) :-
+    retractall(ultimo_mensaje(_)),
+    assert(ultimo_mensaje(Texto)),
+    interpretar(Texto, Accion),
+    aplicar_efecto(Texto, Accion).
 
-% impresión y lectura
+% --- reglas de interpretación---
 
-%Muestra al usuario las opciones en cada turno
-ejecutar_jugada_interactiva(jugador(Nom, Mano, Gan, Pts, Esc), jugador(Nom, R_Mano, NuevasGan, Pts, N_Esc), Mesa, R_Mesa) :-
-    format('~nTurno de: ~a~n', [Nom]),
-    format('~n=================', []),
-    format('~nTus cartas: ~n',[]),
-    imprimir_mano(Mano,1),
-    format('~n=================~n', []),
-    findall(opt(CM, EM, RMes, RMan), encontrar_15(Mano, Mesa, CM, EM, RMan, RMes), Opciones),
-    (Opciones \= [] ->
-        %si hay opciones para levantar
-        imprimir_opciones(Opciones, 1),                 
-        write('Elegi el numero de jugada: '),
-        read(Num),
-        nth1(Num, Opciones, opt(CartaM, Elegidas, R_Mesa, R_Mano)),
-        append([CartaM|Elegidas], Gan, NuevasGan),
-        (R_Mesa == [] -> N_Esc is Esc + 1, writeln('¡¡¡ ESCOBA !!!') ; N_Esc = Esc)
-    ;   %si no hay opciones entonces debe descartar
-        writeln('No hay capturas. Elegi una carta para tirar:'),
-        imprimir_mano(Mano, 1),
-        write('Numero de carta: '),
-        read(Num),
-        nth1(Num, Mano, CartaTirada, R_Mano),
-        R_Mesa = [CartaTirada|Mesa],
-        NuevasGan = Gan,
-        N_Esc = Esc
+interpretar(Texto, pedir_nombre) :-
+    Texto == "Ingrese su nombre", !.
+
+interpretar(Texto, esperando_rival) :-
+    Texto == "Esperando rival...", !.
+
+interpretar(Texto, inicio_juego(Texto)) :-
+    sub_atom(Texto, 0, _, _, 'Comienza el juego'), !.
+
+interpretar(Texto, ignorar) :-
+    sub_atom(Texto, 0, _, _, '====='), !.
+
+interpretar(Texto, actualizar_mesa(Cartas)) :-
+    sub_atom(Texto, 0, _, Resto, 'Cartas en mesa: '),
+    sub_atom(Texto, _, Resto, 0, ListaStr),
+    parsear_lista_cartas(ListaStr, Cartas), !.
+
+interpretar(Texto, inicio_turno) :-
+    Texto == "Tu turno", !.
+
+interpretar(Texto, mostrar_mano) :-
+    sub_atom(Texto, 0, _, _, 'Tus cartas'), !.
+
+interpretar(Texto, opcion_captura) :-
+    sub_atom(Texto, _, _, _, ': Levantar '), !.
+
+interpretar(Texto, sin_capturas) :-
+    sub_atom(Texto, 0, _, _, 'No hay capturas'), !.
+
+interpretar(Texto, linea_numerada(Carta)) :-
+    % formato "N: numero-palo"
+    split_string(Texto, ":", "", [_NumStr, RestoStr]),
+    normalize_space(string(CartaStr), RestoStr),
+    sub_atom(CartaStr, _, _, _, '-'),
+    \+ sub_atom(CartaStr, _, _, _, ' '),
+    term_to_atom(Carta, CartaStr), !.
+
+interpretar(Texto, pedir_jugada) :-
+    sub_atom(Texto, 0, _, _, 'Elej'), !.
+
+interpretar(Texto, pedir_descarte) :-
+    sub_atom(Texto, 0, _, _, 'Numero de carta'), !.
+
+interpretar(Texto, escoba) :-
+    sub_atom(Texto, _, _, _, 'ESCOBA'), !.
+
+interpretar(Texto, jugada_realizada) :-
+    ( sub_atom(Texto, 0, _, _, 'Jugada realizada')
+    ; sub_atom(Texto, 0, _, _, 'Carta lanzada')
+    ), !.
+
+interpretar(Texto, fin_partida) :-
+    sub_atom(Texto, _, _, _, 'PARTIDA TERMINADA'), !.
+
+interpretar(Texto, linea_resultado(Texto)) :-
+    ( sub_atom(Texto, 0, _, _, 'Jugador: ')
+    ; sub_atom(Texto, 0, _, _, '  EL RESULTADO FINAL ES')
+    ), !.
+
+interpretar(Texto, ignorar) :-
+    sub_atom(Texto, 0, _, _, '------'), !.
+
+interpretar(Texto, puntaje_parcial(Texto)) :-
+    sub_atom(Texto, 0, _, _, 'PUNTAJE: '), !.
+
+interpretar(Texto, info(Texto)).  % default: cualquier otra cosa, mostrar como info
+
+% actualizan el estado dinámico segun lo interpretado
+
+
+aplicar_efecto(_, actualizar_mesa(Cartas)) :-
+    !, retractall(mesa_actual(_)), assert(mesa_actual(Cartas)).
+
+aplicar_efecto(_, inicio_turno) :-
+    !,
+    retractall(mi_mano(_)), assert(mi_mano([])),
+    retractall(opciones_actuales(_)), assert(opciones_actuales([])),
+    retractall(modo_actual(_)), assert(modo_actual(esperando)).
+
+aplicar_efecto(_, mostrar_mano) :-
+    !, retractall(contexto_lectura(_)), assert(contexto_lectura(mano)).
+
+aplicar_efecto(_, sin_capturas) :-
+    !,
+    retractall(contexto_lectura(_)), assert(contexto_lectura(mano)),
+    retractall(mi_mano(_)), assert(mi_mano([])),
+    retractall(modo_actual(_)), assert(modo_actual(descartar)).
+
+aplicar_efecto(Texto, opcion_captura) :-
+    !,
+    retractall(contexto_lectura(_)), assert(contexto_lectura(opciones)),
+    opciones_actuales(Op),
+    retractall(opciones_actuales(_)),
+    append(Op, [Texto], Op1),
+    assert(opciones_actuales(Op1)).
+
+aplicar_efecto(_, linea_numerada(Carta)) :-
+    !,
+    contexto_lectura(Ctx),
+    ( Ctx == mano ->
+        mi_mano(M), retractall(mi_mano(_)), append(M, [Carta], M1), assert(mi_mano(M1))
+    ; true
     ).
 
-%Muestra las opciones que tiene para levantar de la mesa
-imprimir_opciones([], _).
-imprimir_opciones([opt(CM, EM, _,_)|Resto], N):-
-    format('~w: Levantar ~w usando ~w de la mesa~n', [N, CM, EM]),
-    N1 is N+1,
-    imprimir_opciones(Resto, N1).
-%Muestra las cartas que tiene el jugador en la mano
-imprimir_mano([], _).
-imprimir_mano([C|Resto], N):-
-    format('~w: ~w~n', [N,C]),
-    N1 is N+1,
-    imprimir_mano(Resto, N1).
+aplicar_efecto(_, pedir_jugada) :-
+    !, retractall(modo_actual(_)), assert(modo_actual(capturar)).
 
-% flujo principal y recursión de puntos
+aplicar_efecto(_, pedir_descarte) :-
+    !, retractall(modo_actual(_)), assert(modo_actual(descartar)).
 
-%Predicado principal
-escoba :- 
-% Inicializamos jugadores, cada uno tiene (nombre, mano, cartas ganadas, puntaje acumulado, cantidad de escobas)
-    Jugadores = [jugador('Ignacio', [], [], 0, 0), 
-                jugador('Mili', [], [], 0, 0)
-                ],
-    % Iniciamos el juego
-    phrase(escoba_loop(Jugadores, JugadoresFinales), [[mazo([]), mesa([]), jugadores([])]], [_]),
-    % Calculamos quién ganó
-    determinar_ganador_final(JugadoresFinales).
+aplicar_efecto(_, fin_partida) :-
+    !, retractall(modo_actual(_)), assert(modo_actual(terminado)).
 
-obtener_puntajes([], []).
-obtener_puntajes([jugador(_, _, _, P, _)|Ps], [P|Resto]) :-
-    obtener_puntajes(Ps, Resto).
+aplicar_efecto(_, jugada_realizada) :-
+    !, retractall(mi_mano(_)), assert(mi_mano([])).
 
-%Prepara el juego, lanza la ronda, y al final calcula los puntos
-escoba_loop(JugadoresIniciales, JugadoresConPuntajeFinal) -->
-    preparar_juego(JugadoresIniciales),
-    jugar_partida,
-    state(S),
-    { 
-        member(jugadores(PsFinalMano), S),
-        calcular_puntajes_finales(PsFinalMano, JugadoresConPuntajeFinal) 
-    }.
+aplicar_efecto(_, _).  % cualquier otro caso, no hay efecto extra
 
-%Genera el mazo y coloca los jugadores en el estado inicial
-preparar_juego(Jugadores) -->
-    { generar_mazo(Mazo) },
-    % Solo mazo y jugadores; la mesa la crea repartir_mesa_inicial
-    state(_, [mazo(Mazo), jugadores(Jugadores)]),
-    repartir_mesa_inicial.
 
-% lógica de rondas y reparto (DCG)
+% parseo de listas de cartas en formato:  [7-oro,4-basto]
 
-%Mientras haya cartas se sigue jugando
-jugar_partida -->
-    state(S), 
-    { member(mazo(Mazo), S), Mazo \= [] },
-    repartir_a_todos,
-    jugar_ronda_de_3,
-    jugar_partida.
-%Cuando no haya mas cartas, se termina el juego
-jugar_partida -->
-    state(S),
-    { member(mazo([]), S) },
-    { writeln('No quedan mas cartas en el mazo.') }.
 
-%Si se usaron todas las cartas de la mano entonces se vuelve a repartir
-jugar_ronda_de_3 -->
-    state(S), { member(jugadores([jugador(_, [], _, _, _)|_]), S) }, !.
-%Mientras los jugadores tengan cartas entonces sigue la ronda
-jugar_ronda_de_3 -->
-    rotar_turno_jugador,
-    jugar_ronda_de_3.
-
-%Toma al primer jugador de la lista, hace que juege y luego lo manda al final de la lista para que juegue otro
-rotar_turno_jugador -->
-    state(S0, S),
-    {
-        select(jugadores([J|JugadoresRestantes]), S0, S1),
-        select(mesa(Mesa0), S1, S2),
-        format('~n=================', []),
-        format('~nCartas en mesa: ~w', [Mesa0]),
-        format('~n=================', []),
-        ejecutar_jugada_interactiva(J, J_Act, Mesa0, Mesa1),
-        append(JugadoresRestantes, [J_Act], JugadoresRotados),
-        S = [jugadores(JugadoresRotados), mesa(Mesa1)|S2]
-    }.
-
-%Reparte 3 cartas a cada jugador para iniciar la ronda
-repartir_a_todos -->
-    state(S0, S),
-    {
-        select(mazo(M0), S0, S1),
-        select(jugadores(Ps0), S1, S2),
-        repartir_manos_recursivo(Ps0, Ps1, M0, M1),
-        S = [jugadores(Ps1), mazo(M1)|S2]
-    }.
-%Auxiliar recursivo para repartir
-repartir_manos_recursivo([], [], M, M).
-repartir_manos_recursivo([jugador(N, _, G, P, E)|Ps], [jugador(N, Nuevas, G, P, E)|Ps1], M0, M) :-
-    length(Nuevas, 3),
-    append(Nuevas, M1, M0),
-    repartir_manos_recursivo(Ps, Ps1, M1, M).
-
-%Coloca las primeras 4 cartas en la mesa
-repartir_mesa_inicial -->
-    state(S0, S),
-    {
-        select(mazo(M0), S0, S1),
-        length(Cuatro, 4),
-        append(Cuatro, RestoMazo, M0),
-        S = [mesa(Cuatro), mazo(RestoMazo)|S1]
-    }.
-
-% cálculo de puntajes
-
-%calcula los puntajes finales
-calcular_puntajes_finales(PtsFijos, PtsTotales) :-
-    maplist(sumar_puntos_fijos, PtsFijos, PtsTemp),
-    otorgar_punto_mayoria(PtsTemp, PtsTemp2, total),
-    otorgar_punto_mayoria(PtsTemp2, PtsTemp3, oros),
-    otorgar_punto_mayoria(PtsTemp3, PtsTotales, sietes).
-
-%suma de puntos que no dependen del rival, 2 por cantidad de escobas y 1 punto por tener el 7 de oro
-sumar_puntos_fijos(jugador(N, _, G, P, E), jugador(N, [], [], P_Act, 0)) :-
-    P_Escobas is E * 2,
-    (member(7-oro, G) -> P_Siete = 1 ; P_Siete = 0),
-    P_Act is P + P_Escobas + P_Siete.
-
-%otorga los puntos solo al jugador que cumpla con las condiciones
-otorgar_punto_mayoria(PtsFijos, PtsTotales, Criterio) :-
-    maplist(obtener_cantidad(Criterio), PtsFijos, Cantidades),
-    max_list(Cantidades, Max),
-    include(==(Max), Cantidades, Ganadores),
-    (length(Ganadores, 1) ->
-        maplist(sumar_si_es_maximo(Criterio, Max), PtsFijos, PtsTotales)
-    ;
-        PtsTotales = PtsFijos
+parsear_lista_cartas(Str, Cartas) :-
+    atom_string(Atom, Str),
+    atom_concat('[', Resto0, Atom),
+    atom_concat(Inner, ']', Resto0),
+    ( Inner == '' -> Cartas = []
+    ; split_string(Inner, ",", " ", Partes),
+      maplist(parsear_carta, Partes, Cartas)
     ).
-%Auxiliares para calcular las cantidades
-obtener_cantidad(total, jugador(_, _, G, _, _), Cant) :- length(G, Cant).   %1 punto por mayoria de cartas
-obtener_cantidad(oros, jugador(_, _, G, _, _), Cant) :- findall(_, member(_-oro, G), L), length(L, Cant).   %1 punto por mayoria de oros
-obtener_cantidad(sietes, jugador(_, _, G, _, _), Cant) :- findall(_, member(7-_, G), L), length(L, Cant).   %1 punto por mayoria de 7s
 
-%encuentra al jugador al que le corresponde cada punto
-sumar_si_es_maximo(Criterio, Max, J_In, J_Out) :-
-    J_In = jugador(N, M, G, P, E),
-    obtener_cantidad(Criterio, J_In, Cant),
-    (Cant == Max -> P1 is P + 1 ; P1 = P),
-    J_Out = jugador(N, M, G, P1, E).
+parsear_carta(Str, Carta) :-
+    term_to_atom(Carta, Str).
 
-%Obtiene los puntajes y determina al ganador del juego
-determinar_ganador_final(Jugadores) :-
-    obtener_puntajes(Jugadores, Puntajes),
-    max_list(Puntajes, Max),
-    member(jugador(Nombre, _, _, Max, _), Jugadores),
-    mostrar_tabla_final(Jugadores, Nombre).
 
-%Se muestra la tabla de puntajes al final
-mostrar_tabla_final(Jugadores, Ganador) :-
-    format('~n====================================~n', []),
-    format('       ¡PARTIDA TERMINADA!          ~n', []),
-    format('====================================~n', []),
-    % Recorremos la lista para mostrar cada puntaje
-    forall(member(jugador(Nom, _, _, Pts, _), Jugadores),
-           format('Jugador: ~w  |  Puntos Totales: ~d~n', [Nom, Pts])),
-    format('------------------------------------~n', []),
-    format('  EL GANADOR FINAL ES: ~a~n', [Ganador]),
-    format('====================================~n', []).
 
-% auxiliares
+%%
 
-%Obtener estado actual y cambios de estado
-state(S), [S] --> [S].
-state(S0, S), [S] --> [S0].
+obtener_mano(Mano) :- mi_mano(Mano).
+obtener_mesa(Mesa) :- mesa_actual(Mesa).
+obtener_opciones(Opciones) :- opciones_actuales(Opciones).
+obtener_modo(Modo) :- modo_actual(Modo).
 
-%Genera todas las combinaciones de una lista
-subconjunto([], [], []).
-subconjunto([X|Resto], [X|Sub], Otros) :- subconjunto(Resto, Sub, Otros).
-subconjunto([X|Resto], Sub, [X|Otros]) :- subconjunto(Resto, Sub, Otros).
+
+responder_indice(Indice, TextoRespuesta) :-
+    number_string(Indice, TextoRespuesta).
